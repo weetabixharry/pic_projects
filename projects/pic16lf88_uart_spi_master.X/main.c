@@ -17,34 +17,38 @@
 #include <xc.h>
 #define _XTAL_FREQ 8000000
 
-#include "pic16lf88/uart.h"
+#include "pic16lf88/spi.h"
 
 void main(void)
 {
     // Configure internal RC oscillator 8 MHz.
     OSCCON  = 0b01110010;
     
+    // Set ANSEL for analogue(1) or digital(0) I/O
+    ANSEL = 0b0000000;
+    
+    // Set RA2 as input for switch
+    TRISAbits.TRISA2 = 1;
+    
     // Set RA0 as output for LED
-    TRISA0 = 0;
+    TRISAbits.TRISA0 = 0;
     
-    // Configure UART
-    uart_init(9600);                   
-    
-    uart_send_string("UART Module Initialized and active");
+    // Configure SPI
+    spi_init(1, 0);                  
     
     while (1)
-    {      
-        uart_send_string("UART Ready\n\r");
-        __delay_ms (500);
+    {
+        if (RA2)
+        {
+            RA0 = 1;
+        }
+        else
+        {
+            RA0 = 0;
+        }
         
-        // Turn on LED
-        RA0 = 1;
-        uart_send_string("LED -> ON\n\r");
-        __delay_ms (500);
-
-        // Turn off LED
-        RA0 = 0;
-        uart_send_string("LED -> OFF\n\r");
-        __delay_ms (500);
+        // Send switch reading to slave
+        SPI_Exchange8bit(RA2);
     }
+    
 }
