@@ -22,6 +22,8 @@ void spi_init(uint8_t is_master, uint8_t use_slave_select)
     if (is_master)
     {
         TRISB4 = 0; // Master: SCK (pin 10) is output
+        if (use_slave_select)
+            TRISB5 = 0; // Master: Use RB5 (pin 11) as output for !SS
     }
     else
     {

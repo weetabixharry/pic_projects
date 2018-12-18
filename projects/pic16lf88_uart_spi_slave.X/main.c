@@ -2,7 +2,7 @@
 #pragma config FOSC = INTOSCIO  // Oscillator Selection bits (INTRC oscillator; port I/O function on both RA6/OSC2/CLKO pin and RA7/OSC1/CLKI pin)
 #pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled)
 #pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
-#pragma config MCLRE = OFF      // RA5/MCLR/VPP Pin Function Select bit (RA5/MCLR/VPP pin function is digital I/O, MCLR internally tied to VDD)
+#pragma config MCLRE = ON      // RA5/MCLR/VPP Pin Function Select bit (RA5/MCLR/VPP pin function is digital I/O, MCLR internally tied to VDD)
 #pragma config BOREN = ON       // Brown-out Reset Enable bit (BOR enabled)
 #pragma config LVP = ON         // Low-Voltage Programming Enable bit (RB3/PGM pin has PGM function, Low-Voltage Programming enabled)
 #pragma config CPD = OFF        // Data EE Memory Code Protection bit (Code protection off)
@@ -15,9 +15,13 @@
 #pragma config IESO = ON        // Internal External Switchover bit (Internal External Switchover mode enabled)
 
 #include <xc.h>
+#include <string.h>
 #define _XTAL_FREQ 8000000
 
 #include "pic16lf88/spi.h"
+
+const char* MASTER_MAGIC = "Pia!";
+const char* SLAVE_MAGIC = "Harry!";
 
 void main(void)
 {
@@ -27,18 +31,50 @@ void main(void)
     // Set ANSEL for analogue(1) or digital(0) I/O
     ANSEL = 0b0000000;
     
-    // Set RA0 as output for LED
+    // Set digital outputs for LEDs
     TRISAbits.TRISA0 = 0;
     TRISAbits.TRISA2 = 0;
+    TRISAbits.TRISA3 = 0;
+    TRISAbits.TRISA4 = 0;
+    TRISBbits.TRISB0 = 0;
     
-    // Configure SPI
-    spi_init(0, 0);                  
+    // Configure SPI as slave with slave select enabled
+    spi_init(0, 0);
     
+    RA0 = 0;
     while (1)
-    {        
-        // Receive switch reading from master
-        RA0 = SPI_Exchange8bit(0);
+    {
+        RA2 = 0;
+        RA3 = 0;
+        RA4 = 0;
+        RB0 = 0;
+
+        // SPI handshake
+        uint8_t state = 0;
+        while (state < strlen(MASTER_MAGIC))
+        {
+            // Receive byte from master. Send zeros.
+            uint8_t rx = SPI_Exchange8bit(0);
+            if (MASTER_MAGIC[state])
+                state++;
+            else
+                state = 0; // Unexpected rx. Reset state.
+
+            // Output state onto LEDs
+            RB0 = (state >= strlen(MASTER_MAGIC));
+            RA4 = (state >= 2);
+            RA3 = (state >= 1);
+        }
+
+        // Acknowledge that we saw the master's magic number
+        for (uint8_t i=0; i<strlen(SLAVE_MAGIC); i++)
+            SPI_Exchange8bit(SLAVE_MAGIC[i]);
+
         RA2 = 1;
+        // Take commands from master
+        uint8_t rx = SPI_Exchange8bit(0);
+
+        if (rx == 0 || rx == 1)
+            RA0 = rx;
     }
-    
 }
