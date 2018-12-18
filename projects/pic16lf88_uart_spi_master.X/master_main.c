@@ -20,8 +20,8 @@
 
 #include "pic16lf88/spi.h"
 
-const char* MASTER_MAGIC = "Pia!";
-const char* SLAVE_MAGIC = "Harry!";
+const char* MASTER_MAGIC = "Hello from the master!";
+const char* SLAVE_MAGIC = "Greetings, master. agkasglaskgnaklsgnalksgn";
 
 void main(void)
 {
@@ -50,7 +50,7 @@ void main(void)
         uint8_t ack_state = 0;
         while (ack_state < strlen(SLAVE_MAGIC))
         {
-            uint8_t rx = SPI_Exchange8bit(MASTER_MAGIC[tx_state++]);
+            uint8_t rx = spi_transceive_byte(MASTER_MAGIC[tx_state++]);
             if (rx == SLAVE_MAGIC[ack_state])
                 ack_state++;
             else
@@ -75,7 +75,7 @@ void main(void)
         }
         
         // Send switch reading to slave
-        SPI_Exchange8bit(RA2);
+        spi_transceive_byte(RA2);
     }
     
 }

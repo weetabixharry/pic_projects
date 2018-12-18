@@ -20,8 +20,8 @@
 
 #include "pic16lf88/spi.h"
 
-const char* MASTER_MAGIC = "Pia!";
-const char* SLAVE_MAGIC = "Harry!";
+const char* MASTER_MAGIC = "Hello from the master!";
+const char* SLAVE_MAGIC = "Greetings, master. agkasglaskgnaklsgnalksgn";
 
 void main(void)
 {
@@ -54,8 +54,8 @@ void main(void)
         while (state < strlen(MASTER_MAGIC))
         {
             // Receive byte from master. Send zeros.
-            uint8_t rx = SPI_Exchange8bit(0);
-            if (MASTER_MAGIC[state])
+            uint8_t rx = spi_transceive_byte(0);
+            if (rx == MASTER_MAGIC[state])
                 state++;
             else
                 state = 0; // Unexpected rx. Reset state.
@@ -68,11 +68,11 @@ void main(void)
 
         // Acknowledge that we saw the master's magic number
         for (uint8_t i=0; i<strlen(SLAVE_MAGIC); i++)
-            SPI_Exchange8bit(SLAVE_MAGIC[i]);
+            spi_transceive_byte(SLAVE_MAGIC[i]);
 
         RA2 = 1;
         // Take commands from master
-        uint8_t rx = SPI_Exchange8bit(0);
+        uint8_t rx = spi_transceive_byte(0);
 
         if (rx == 0 || rx == 1)
             RA0 = rx;

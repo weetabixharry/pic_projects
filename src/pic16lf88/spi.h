@@ -1,8 +1,8 @@
 #ifndef SPI_H
 #define	SPI_H
 
+#include <xc.h>
 #include <stdint.h>
-#include <stddef.h>
 
 void set_sspm(uint8_t x)
 {
@@ -70,14 +70,7 @@ void spi_init(uint8_t is_master, uint8_t use_slave_select)
     SSPCONbits.SSPEN = 1; // SSPCON<5> = SSPEN. Enable Synchronous Serial Port
 }
 
-// -------------------------------------------------------------------------
-// -- MCC doesn't support PIC16LF88, so the following functions were      --
-// -- modified from MCC-generated code for some other part (PIC16LF1503). --
-// -------------------------------------------------------------------------
-
-#define SPI_DUMMY_DATA 0x0
-
-uint8_t SPI_Exchange8bit(uint8_t data)
+uint8_t spi_transceive_byte(uint8_t data)
 {
     // Clear the Write Collision flag, to allow writing
     SSPCONbits.WCOL = 0;
@@ -91,57 +84,4 @@ uint8_t SPI_Exchange8bit(uint8_t data)
     return SSPBUF;
 }
 
-uint8_t SPI_Exchange8bitBuffer(uint8_t *dataIn, uint8_t bufLen, uint8_t *dataOut)
-{
-    uint8_t bytesWritten = 0;
-
-    if(bufLen != 0)
-    {
-        if(dataIn != NULL)
-        {
-            while(bytesWritten < bufLen)
-            {
-                if(dataOut == NULL)
-                {
-                    SPI_Exchange8bit(dataIn[bytesWritten]);
-                }
-                else
-                {
-                    dataOut[bytesWritten] = SPI_Exchange8bit(dataIn[bytesWritten]);
-                }
-
-                bytesWritten++;
-            }
-        }
-        else
-        {
-            if(dataOut != NULL)
-            {
-                while(bytesWritten < bufLen )
-                {
-                    dataOut[bytesWritten] = SPI_Exchange8bit(SPI_DUMMY_DATA);
-
-                    bytesWritten++;
-                }
-            }
-        }
-    }
-
-    return bytesWritten;
-}
-
-uint8_t SPI_IsBufferFull()
-{
-    return SSPSTATbits.BF;
-}
-
-uint8_t SPI_HasWriteCollisionOccured()
-{
-    return SSPCONbits.WCOL;
-}
-
-void SPI_ClearWriteCollisionStatus()
-{
-    SSPCONbits.WCOL = 0;
-}
 #endif	/* SPI_H */
