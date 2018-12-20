@@ -20,61 +20,74 @@
 
 #include "pic16lf88/spi.h"
 
-const char* MASTER_MAGIC = "Hello from the master!";
-const char* SLAVE_MAGIC = "Greetings, master. agkasglaskgnaklsgnalksgn";
+const char* SECRET_PASSWORD = "123456789ABCDEF";
+
+void display(uint8_t x)
+{
+    // Display 4-bit number on LEDs
+    RA2 = (x >> 0) & 0x1;
+    RA3 = (x >> 1) & 0x1;
+    RA4 = (x >> 2) & 0x1;
+    RB0 = (x >> 3) & 0x1;
+}
 
 void main(void)
 {
     // Configure internal RC oscillator 8 MHz.
-    OSCCON  = 0b01110010;
+    OSCCON = 0b01110010;
     
     // Set ANSEL for analogue(1) or digital(0) I/O
     ANSEL = 0b0000000;
     
-    // Set digital outputs for LEDs
+    // Set digital outputs for status LEDs
     TRISAbits.TRISA0 = 0;
     TRISAbits.TRISA2 = 0;
     TRISAbits.TRISA3 = 0;
     TRISAbits.TRISA4 = 0;
     TRISBbits.TRISB0 = 0;
     
-    // Configure SPI as slave with slave select enabled
+    // Configure SPI as slave
     spi_init(0, 0);
     
-    RA0 = 0;
+    display(0); // Turn 4-bit number display off.
+    uint8_t init = 0;
+    uint8_t state = 0;
     while (1)
     {
-        RA2 = 0;
-        RA3 = 0;
-        RA4 = 0;
-        RB0 = 0;
+        // Turn on the "everything is okay" LED.
+        RA0 = 1;
+        
+        // Receive a byte from master. We have to send something, so send 0xFF.
+        uint8_t rx = spi_transceive_byte(0xFF);
 
-        // SPI handshake
-        uint8_t state = 0;
-        while (state < strlen(MASTER_MAGIC))
+        // Sync up with wherever the master is in the password
+        if (init == 0)
         {
-            // Receive byte from master. Send zeros.
-            uint8_t rx = spi_transceive_byte(0);
-            if (rx == MASTER_MAGIC[state])
-                state++;
-            else
-                state = 0; // Unexpected rx. Reset state.
-
-            // Output state onto LEDs
-            RB0 = (state >= strlen(MASTER_MAGIC));
-            RA4 = (state >= 2);
-            RA3 = (state >= 1);
+            for (size_t k=0; k<strlen(SECRET_PASSWORD); k++)
+                if (rx == SECRET_PASSWORD[k])
+                {
+                    state = k;
+                    init = 1;
+                }
         }
-
-        // Acknowledge that we saw the master's magic number
-        for (uint8_t i=0; i<strlen(SLAVE_MAGIC); i++)
-            spi_transceive_byte(SLAVE_MAGIC[i]);
-
-        RA2 = 1;
-        // Take commands from master
-        uint8_t rx = spi_transceive_byte(0);
-
-        if (rx == 0 || rx == 1)
-            RA0 = rx;
+        else
+        {
+            uint8_t next_state = (state+1) % strlen(SECRET_PASSWORD);
+            
+            if (rx == SECRET_PASSWORD[next_state])
+            {
+                // Success! Received the expected character. Proceed to next.
+                state = next_state;
+                display(1+state); // +1 so at least 1 LED is lit.
+            }
+            else
+            {
+                // Error! Unexpected character received. Turn off all the lights
+                // to signal error and wait a while so we see it.
+                display(0);
+                RA0 = 0;
+                __delay_ms(100);
+            }
+        }
     }
 }

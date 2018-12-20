@@ -20,13 +20,12 @@
 
 #include "pic16lf88/spi.h"
 
-const char* MASTER_MAGIC = "Hello from the master!";
-const char* SLAVE_MAGIC = "Greetings, master. agkasglaskgnaklsgnalksgn";
+const char* SECRET_PASSWORD = "123456789ABCDEF";
 
 void main(void)
 {
     // Configure internal RC oscillator 8 MHz.
-    OSCCON  = 0b01110010;
+    OSCCON = 0b01110010;
     
     // Set ANSEL for analogue(1) or digital(0) I/O
     ANSEL = 0b0000000;
@@ -37,45 +36,28 @@ void main(void)
     // Set RA0 as output for LED
     TRISAbits.TRISA0 = 0;
     
-    RA0 = 0;
+    // Power LED
+    RA0 = 1;
     
-    // Configure SPI as master with RB5 configured as output for slave select
+    // Configure SPI as master
     spi_init(1, 0);
     
     while (1)
     {
-        // Handshake: Continuously send magic number and simultaneously check if the
-        // the magic reply has been received in response.
-        uint8_t tx_state = 0;
-        uint8_t ack_state = 0;
-        while (ack_state < strlen(SLAVE_MAGIC))
+        // Send password to slave
+        for (uint8_t i=0; i<strlen(SECRET_PASSWORD); i++)
         {
-            uint8_t rx = spi_transceive_byte(MASTER_MAGIC[tx_state++]);
-            if (rx == SLAVE_MAGIC[ack_state])
-                ack_state++;
-            else
+            // Send next byte of password
+            spi_transceive_byte(SECRET_PASSWORD[i]);
+            __delay_ms(100); // Removing this delay causes slave to miss bytes.
+            
+            // Use switch to do something a bit different
+            if (RA2)
             {
-                ack_state = 0; // Unexpected rx byte. Reset ack state.
-                //SPI_Exchange8bit(MASTER_ERROR);
+                spi_transceive_byte(0x00);
+                __delay_ms(500);
             }
-
-            // Loop tx_state counter
-            if (tx_state >= strlen(MASTER_MAGIC))
-                tx_state = 0;
         }
-        
-        // Light local LED in response to switch
-        if (RA2)
-        {
-            RA0 = 1;
-        }
-        else
-        {
-            RA0 = 0;
-        }
-        
-        // Send switch reading to slave
-        spi_transceive_byte(RA2);
     }
     
 }
