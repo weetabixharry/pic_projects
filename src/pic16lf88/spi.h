@@ -46,17 +46,17 @@ void spi_init(uint8_t is_master, uint8_t use_slave_select)
     // SSPCON<3:0> = SSPM<3:0>
     if (is_master)
     {
-        //SSPCONbits.SSPCON = 0b0000; // clock = OSC/4
-        //SSPCONbits.SSPCON = 0b0001; // clock = OSC/16
-        SSPCONbits.SSPCON = 0b0010; // clock = OSC/64
-        //SSPCONbits.SSPCON = 0b0011; // clock = TMR2 output/2
+        //SSPCONbits.SSPM = 0b0000; // clock = OSC/4
+        //SSPCONbits.SSPM = 0b0001; // clock = OSC/16
+        SSPCONbits.SSPM = 0b0010; // clock = OSC/64
+        //SSPCONbits.SSPM = 0b0011; // clock = TMR2 output/2
     }
     else
     {
         if (use_slave_select)
-            SSPCONbits.SSPCON = 0b0100;
+            SSPCONbits.SSPM = 0b0100;
         else
-            SSPCONbits.SSPCON = 0b0101;
+            SSPCONbits.SSPM = 0b0101;
     }
     
     SSPCONbits.SSPEN = 1; // SSPCON<5> = SSPEN. Enable Synchronous Serial Port
